@@ -35,9 +35,7 @@ function addBar() {
       <h1 class="text-2xl font-semibold mb-2">
         Nuxt 3 + Three.js — 3D Bars (Polished)
       </h1>
-      <p class="text-slate-300 mb-4">
-        إضاءة واقعية، ظلال ناعمة، تدرّج ألوان، وتحريك سلس.
-      </p>
+   
 
       <div class="flex gap-2 mb-3">
         <button

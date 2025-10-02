@@ -19,13 +19,15 @@ function randomize() {
     value: Math.max(5, Math.round(d.value * (0.7 + Math.random() * 0.6))),
   }));
 }
-
+const barr = ref("");
 function addBar() {
+  if (!barr.value) return;
   const next = data.value.length + 1;
   data.value = [
     ...data.value,
-    { label: `Item ${next}`, value: Math.round(10 + Math.random() * 60) },
+    { label: barr.value, value: Math.round(10 + Math.random() * 60) },
   ];
+  barr.value = "";
 }
 </script>
 
@@ -35,7 +37,14 @@ function addBar() {
       <h1 class="text-2xl font-semibold mb-2">
         Nuxt 3 + Three.js — 3D Bars (Polished)
       </h1>
-   
+      <input
+      v-model="barr"
+        type="text"
+        placeholder="add a bar..."
+        class="mb-4 p-2 rounded-lg w-full text-slate-900"
+      />
+      <span v-if="barr.length === 0" class="text-red-500">error</span>
+
 
       <div class="flex gap-2 mb-3">
         <button
@@ -54,9 +63,10 @@ function addBar() {
 
       <ThreeBars
         :data="data"
-        :height="540"
-        :background="'#0b1220'"
-        :autoRotate="true"
+        :height="514"
+        :background="'white'"
+        :barWidth="1.6"
+        :barDepth="0.5"
       />
     </section>
   </main>

@@ -21,15 +21,15 @@ const props = defineProps<{
 }>();
 
 const host = ref<HTMLDivElement | null>(null);
-let renderer: THREE.WebGLRenderer | null = null;
-let scene: THREE.Scene | null = null;
-let camera: THREE.PerspectiveCamera | null = null;
-let controls: OrbitControls | null = null;
-let animationId: number | null = null;
-let ro: ResizeObserver | null = null;
-let raycaster: THREE.Raycaster | null = null;
-let pointer: THREE.Vector2 | null = null;
-let tooltipDiv: HTMLDivElement | null = null;
+let renderer: THREE.WebGLRenderer | null = null;// الرسّام WebGL
+let scene: THREE.Scene | null = null;// المشهد
+let camera: THREE.PerspectiveCamera | null = null;// الكاميرا
+let controls: OrbitControls | null = null;// جهزة التحكم
+let animationId: number | null = null;// معرف طلب الإطار للرسوم المتحركة
+let ro: ResizeObserver | null = null;// مراقب تغيير الحجم
+let raycaster: THREE.Raycaster | null = null;// كاشفver
+let pointer: THREE.Vector2 | null = null;// متجه ثنائي الأبعاد لتخزين إحداثيات المؤشر
+let tooltipDiv: HTMLDivElement | null = null;// عنصر div لتلميح الأدوات
 
 const bg = computed(() => props.background ?? "#0b1220"); // أزرق غامق
 const h = computed(() => props.height ?? 520);
@@ -41,102 +41,108 @@ function buildScene() {
   if (!host.value) return;
 
   // Renderer
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(host.value.clientWidth, host.value.clientHeight);
-  renderer.setClearColor(new THREE.Color(bg.value));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
-  renderer.physicallyCorrectLights = true;
-  host.value.appendChild(renderer.domElement);
+  renderer = new THREE.WebGLRenderer({ antialias: true }); // إنشاء الرسّام WebGL مع تفعيل تنعيم الحواف (antialias).
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); //ضبط دقة الرسم حسب شاشة المستخدم لكن بحد أقصى ×2 لتقليل استهلاك الموارد.
+  renderer.setSize(host.value.clientWidth, host.value.clientHeight);// ضبط حجم الرسم ليملأ العنصر المضيف.
+  renderer.setClearColor(new THREE.Color(bg.value));// تعيين لون الخلفية.
+  renderer.shadowMap.enabled = true;// تفعيل خريطة الظلال.
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;// تعيين نوع خريطة الظلال إلى PCFSoftShadowMap للحصول على ظلال ناعمة.
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;// تعيين نوع معالجة النغمة إلى ACESFilmicToneMapping لتحسين نطاق الألوان والسطوع.
+  renderer.toneMappingExposure = 1.05;// ضبط تعريض معالجة النغمة.
+  renderer.physicallyCorrectLights = true;// تفعيل الأضواء الفيزيائية الصحيحة لتحسين واقعية الإضاءة.
+  host.value.appendChild(renderer.domElement);// إضافة عنصر الرسم إلى العنصر المضيف في DOM.
 
   // Scene + Env
-  scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(bg.value, 25, 60);
+  scene = new THREE.Scene();// إنشاء مشهد جديد.
+  scene.fog = new THREE.Fog(bg.value, 25, 60);// إضافة تأثير ضبابي للمشهد.
 
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-  scene.environment = env;
+  const pmrem = new THREE.PMREMGenerator(renderer);// إنشاء مولد خرائط البيئة مسبقة التصفية.
+  const env = pmrem.fromScene(new RoomEnvironment() // إنشاء مشهد غرفة.
+  , 0.04// مستوى التفاصيل (0.04 يعني تفاصيل عالية
+).texture;// إنشاء خريطة بيئية من مشهد غرفة.
+  scene.environment = env;// تعيين خريطة بيئة للمشهد.
+
 
   // Camera
   camera = new THREE.PerspectiveCamera(
-    60,
-    host.value.clientWidth / host.value.clientHeight,
-    0.1,
-    200
-  );
-  camera.position.set(10, 10, 16);
+    60, // زاوية الرؤية العمودية
+    host.value.clientWidth / host.value.clientHeight, // نسبة العرض إلى الارتفاع
+    0.1, // أقرب مسافة للرؤية
+    200 // أبعد مسافة للرؤية 
+  );// إنشاء كاميرا منظور.
+  camera.position.set(10, 10, 16);// تعيين موقع الكاميرا في الفضاء ثلاثي الأبعاد.
 
   // Lights (ناعمة)
-  const hemi = new THREE.HemisphereLight(0xffffff, 0x334455, 0.6);
-  scene.add(hemi);
-  const key = new THREE.DirectionalLight(0xffffff, 2.2);
-  key.position.set(8, 12, 6);
-  key.castShadow = true;
-  key.shadow.mapSize.set(1024, 1024);
-  key.shadow.camera.near = 1;
-  key.shadow.camera.far = 60;
-  scene.add(key);
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x334455, 0.6);//إنشاء ناعمة سماء.
+  scene.add(hemi);// إضافة ضوء نصف كروي إلى المشهد.
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);// إنشاء ضوء اتجاهي (ضوء رئيسي).
+  key.position.set(8, 12, 6);// تعيين موقع الضوء الرئيسي.
+  key.castShadow = true;// تفعيل إلقاء الظلال للضوء الرئيسي.
+  key.shadow.mapSize.set(1024, 1024);// ضبط حجم خريطة الظلال.
+  key.shadow.camera.near = 1;// ضبط أقرب مسافة لظل الكاميرا.
+  key.shadow.camera.far = 60;// ضبط أبعد مسافة لظل الكاميرا.
+  scene.add(key);// إضافة الضوء الرئيسي إلى المشهد.
 
   // Controls
-  controls = new OrbitControls(camera!, renderer.domElement);
-  controls.enableDamping = true;
-  controls.autoRotate = props.autoRotate ?? true;
-  controls.autoRotateSpeed = 0.8;
-  controls.target.set(0, 2.2, 0);
+  controls = new OrbitControls(camera!, renderer.domElement);//إنشاء جهزة التحكم.
+  controls.enableDamping = true;// تفعيل التخميد لجعل الحركة أكثر سلاسة.
+  controls.autoRotate = props.autoRotate ?? true;// تفعيل الدوران التلقائي إذا لم يتم تحديده في الخصائص.
+  controls.autoRotateSpeed = 0.8;// تعيين سرعة الدوران التلقائي.
+  controls.target.set(0, 2.2, 0);// تعيين نقطة الهدف التي تدور حولها الكاميرا.
 
   // Floor + Grid
   const floorMat = new THREE.MeshStandardMaterial({
     color: 0x0f172a,
     roughness: 1,
     metalness: 0,
-  });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), floorMat);
-  floor.receiveShadow = true;
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
+  });// إنشاء مادة قياسية للأرضية.
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120), floorMat);// إنشاء شبكة أرضية كبيرة.
+  floor.receiveShadow = true;// تفعيل استقبال الظلال للأرضية.
+  floor.rotation.x = -Math.PI / 2;// تدوير الأرضية لتكون أفقية.
+  scene.add(floor);// إضافة العرض إلى المشهد.
+
 
   const grid = new THREE.GridHelper(120, 60, 0x1f3b5c, 0x12253f); // خطوط قابلة بالكاد
-  (grid.material as THREE.Material).opacity = 0.45;
-  (grid.material as THREE.Material).transparent = true;
-  scene.add(grid);
+  (grid.material as THREE.Material).opacity = 0.45;// ضبط شفافية الخطوط.
+  (grid.material as THREE.Material).transparent = true;// تفعيل الشفافية للخطوط.
+  scene.add(grid);// إضافة الخطوط إلى المشهد.
+
+
 
   // Tooltip (HTML)
-  tooltipDiv = document.createElement("div");
+  tooltipDiv = document.createElement("div");// إنشاء عنصر div جديد ليكون تلميحًا.
   tooltipDiv.className =
     "pointer-events-none absolute px-2 py-1 text-sm rounded-xl shadow bg-black/80 text-white opacity-0 transition-opacity";
   Object.assign(tooltipDiv.style, {
     position: "absolute",
     transform: "translate(-50%, -120%)",
-  });
+  });// تعيين بعض الأنماط الأساسية للتلميح.
   host.value.style.position = "relative";
-  host.value.appendChild(tooltipDiv);
+  host.value.appendChild(tooltipDiv);// إضافة التلميح إلى العنصر المضيف.
 
   // Raycaster
-  raycaster = new THREE.Raycaster();
-  pointer = new THREE.Vector2();
-  renderer.domElement.addEventListener("pointermove", onPointerMove);
+  raycaster = new THREE.Raycaster();// إنشاء كاشف الأشعة للتفاعل مع الأجسام في المشهد.
+  pointer = new THREE.Vector2();// إنشاء متجه ثنائي الأبعاد لتخزين إحداثيات المؤشر.
+  renderer.domElement.addEventListener("pointermove", onPointerMove);// إضافة مستمع حدث لتحريك المؤشر.
 
   // Bars أول رسم
-  createOrUpdateBars(true);
+  createOrUpdateBars(true);// إنشاء أو تحديث الأعمدة لأول مرة.
 
   // Resize
-  ro = new ResizeObserver(onResize);
-  ro.observe(host.value);
+  ro = new ResizeObserver(onResize);// إنشاء مراقب تغيير الحجم.
+  ro.observe(host.value);// مراقبة تغييرات حجم العنصر المضيف لإعادة ضبط العرض والكاميرا.
 
   animate();
-}
+}// بناء المشهد ثلاثي الأبعاد.
 
 function onResize() {
   if (!host.value || !renderer || !camera) return;
   const width = host.value.clientWidth;
   const height = host.value.clientHeight;
-  renderer.setSize(width, height);
+  renderer.setSize(width, height);//
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
-}
+}// إعادة ضبط حجم العرض ونسبة العرض إلى الارتفاع للكاميرا عند تغيير حجم العنصر المضيف.
 
 function onPointerMove(event: PointerEvent) {
   if (!renderer || !host.value || !pointer) return;
@@ -144,7 +150,7 @@ function onPointerMove(event: PointerEvent) {
   pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
   pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
   checkHover(event);
-}
+}// تحديث إحداثيات المؤشر بناءً على موقعه في العنصر المضيف والتحقق من التفاعل مع الأعمدة.
 
 function barContainer() {
   // نجمع الأعمدة تحت Group واحد لترتيب أسهل
@@ -155,7 +161,7 @@ function barContainer() {
     scene!.add(group);
   }
   return group;
-}
+}// الحصول على مجموعة الأعمدة أو إنشاؤها إذا لم تكن موجودة.
 
 function createOrUpdateBars(firstTime = false) {
   if (!scene) return;
@@ -250,7 +256,7 @@ function createOrUpdateBars(firstTime = false) {
       });
     }
   });
-}
+}// إنشاء أو تحديث الأعمدة بناءً على البيانات الجديدة.
 
 function applyHeightsLerp(dt: number) {
   const group = barContainer();
@@ -274,7 +280,8 @@ function applyHeightsLerp(dt: number) {
     edge.scale.y = next;
     edge.position.y = mesh.position.y;
   });
-}
+}// تطبيق ارتفاعاً متحركاً للعناصر في المجموعة.
+
 
 function checkHover(evt: PointerEvent) {
   if (
@@ -323,7 +330,7 @@ function checkHover(evt: PointerEvent) {
   } else {
     tooltipDiv.style.opacity = "0";
   }
-}
+}// التحقق من تفاعل المؤشر مع الأعمدة وتحديث التلميح واللمعان.
 
 let lastT = 0;
 function animate(t = 0) {
@@ -335,7 +342,7 @@ function animate(t = 0) {
   controls.update();
   applyHeightsLerp(dt);
   renderer.render(scene, camera);
-}
+}// حلقة الرسوم المتحركة التي تقوم بتحديث المشهد باستمرار.
 
 onMounted(() => buildScene());
 
@@ -343,7 +350,7 @@ watch(
   () => props.data,
   () => createOrUpdateBars(),
   { deep: true }
-);
+);// مراقبة تغييرات البيانات لإعادة إنشاء أو تحديث الأعمدة.
 
 onBeforeUnmount(() => {
   if (animationId) cancelAnimationFrame(animationId);
@@ -369,7 +376,7 @@ onBeforeUnmount(() => {
   controls = null;
   raycaster = null;
   pointer = null;
-});
+});// تنظيف الموارد عند إلغاء تركيب المكون.
 </script>
 
 <template>
